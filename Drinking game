@@ -1,0 +1,121 @@
+import streamlit as st
+import time
+
+# --- INITIAL SETUP ---
+st.set_page_config(page_title="The Beverage Ballot", page_icon="🍺")
+
+# Mock Database (In a real app, this would be a cloud DB, 
+# but for this version, we use session_state for live play)
+if 'score_savarese' not in st.session_state:
+    st.session_state.score_savarese = 0
+if 'score_willis' not in st.session_state:
+    st.session_state.score_willis = 0
+if 'game_active' not in st.session_state:
+    st.session_state.game_active = False
+
+# --- STYLING ---
+st.markdown("""
+    <style>
+    .big-font { font-size:30px !important; font-weight: bold; color: #ff4b4b; }
+    .score-box { background-color: #f0f2f6; padding: 10px; border-radius: 10px; border: 2px solid #ff4b4b; }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- HEADER & GLOBAL RESET ---
+st.title("🍺 The Beverage Ballot")
+
+if st.button("🚨 START NEW GAME (RESET ALL)"):
+    st.session_state.score_savarese = 0
+    st.session_state.score_willis = 0
+    st.session_state.game_active = False
+    st.rerun()
+
+# --- SCOREBOARD ---
+col1, col2 = st.columns(2)
+with col1:
+    st.markdown(f"<div class='score-box'><b>Savarese</b><br><span class='big-font'>{st.session_state.score_savarese}</span></div>", unsafe_allow_html=True)
+with col2:
+    st.markdown(f"<div class='score-box'><b>Willis</b><br><span class='big-font'>{st.session_state.score_willis}</span></div>", unsafe_allow_html=True)
+
+st.divider()
+
+# --- GAME LOGIC ---
+if not st.session_state.game_active:
+    st.subheader("Host a New Round")
+    hosting_team = st.radio("Which team is ordering?", ["Savarese", "Willis"])
+    location = st.text_input("Where are you?")
+    menu_img = st.camera_input("Take a photo of the menu")
+    
+    st.write("Enter the correct Drink Numbers:")
+    c1, c2 = st.columns(2)
+    ans1 = c1.number_input("Drink 1 #", min_value=0, step=1)
+    ans2 = c2.number_input("Drink 2 # (0 if only 1 drink)", min_value=0, step=1)
+    
+    if st.button("Lock it in! Invite others to guess"):
+        if menu_img:
+            st.session_state.truth = [ans1, ans2] if ans2 != 0 else [ans1]
+            st.session_state.location = location
+            st.session_state.menu_img = menu_img
+            st.session_state.hosting_team = hosting_team
+            st.session_state.game_active = True
+            st.rerun()
+        else:
+            st.error("Please take a photo of the menu first!")
+
+else:
+    # --- GUESSING VIEW ---
+    st.subheader(f"📍 Location: {st.session_state.location}")
+    st.image(st.session_state.menu_img, caption="What are they drinking?")
+    
+    guessing_team = "Willis" if st.session_state.hosting_team == "Savarese" else "Savarese"
+    st.info(f"Team {guessing_team}, it's your turn to guess!")
+
+    # Hidden Guessing Section
+    with st.expander("👤 Member 1 Guesses"):
+        g1 = st.number_input("Your 1st Guess", min_value=0, step=1, key="g1")
+        g2 = st.number_input("Your 2nd Guess", min_value=0, step=1, key="g2")
+    
+    with st.expander("👤 Member 2 Guesses"):
+        g3 = st.number_input("Your 1st Guess", min_value=0, step=1, key="g3")
+        g4 = st.number_input("Your 2nd Guess", min_value=0, step=1, key="g4")
+
+    if st.button("Submit Team Guesses"):
+        all_guesses = [g1, g2, g3, g4]
+        # Remove zeros (assuming 0 is 'no guess')
+        all_guesses = [g for g in all_guesses if g != 0]
+        
+        correct_count = 0
+        wrong_count = 0
+        
+        for g in all_guesses:
+            if g in st.session_state.truth:
+                correct_count += 1
+            else:
+                wrong_count += 1
+        
+        round_score = correct_count - wrong_count
+        
+        # Update Scores
+        if guessing_team == "Savarese":
+            st.session_state.score_savarese += round_score
+        else:
+            st.session_state.score_willis += round_score
+            
+        # PINT REWARD LOGIC
+        total_possible = len(all_guesses)
+        accuracy = correct_count / total_possible if total_possible > 0 else 0
+        
+        if accuracy == 1.0:
+            st.balloons()
+            st.success("🍺 FULL PINT! 100% Perfect!")
+        elif accuracy >= 0.5:
+            st.warning("🥛 HALF PINT! Not bad!")
+        else:
+            st.error("🫙 EMPTY PINT! Ouch.")
+            
+        st.write(f"The correct drinks were: {st.session_state.truth}")
+        st.write(f"Round Points: {round_score}")
+        
+        if st.button("Next Round"):
+            st.session_state.game_active = False
+            st.rerun()
