@@ -1,17 +1,5 @@
-        total_possible = len(all_guesses)
-        accuracy = correct_count / total_possible if total_possible > 0 else 0
-        
-        if accuracy == 1.0:
-            st.balloons()
-            st.success("🍺 FULL PINT! 100% Perfect!")
-        elif accuracy >= 0.5:
-            st.warning("🥛 HALF PINT! Not bad!")
-        else:
-            st.error("🫙 EMPTY PINT! Ouch.")
-            
-        st.write(f"The correct drinks were: {st.session_state.truth}")
-        st.write(f"Round Points: {round_score}")
-        
-        if st.button("Next Round"):
-            st.session_state.game_active = False
-            st.rerun()
+import streamlit as st
+
+st.title("Connection Test Success! ✅")
+st.write("If you see this, the file path is correct.")
+st.write("Tell me, and I will give you the full game code again.")
